@@ -64,3 +64,42 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+## 開発セットアップ
+
+### ローカルモード (localhostのみ)
+ローカル開発のためにアプリケーションを起動する方法（このマシンからのみアクセス可能）:
+
+1. Laravel開発サーバーを起動します:
+    ```bash
+    php artisan serve
+    ```
+2. Vite開発サーバーを起動します:
+    ```bash
+    npm run dev
+    ```
+3. ブラウザで [http://localhost:8000](http://localhost:8000) にアクセスします。
+
+### サーバーモード (ネットワークアクセス)
+同一ネットワーク上の他のデバイスへアプリケーションを公開する方法:
+
+1. hostオプションを付けてLaravelサーバーを起動します:
+    ```bash
+    php artisan serve --host 0.0.0.0
+    ```
+2. Viteサーバーを起動します (自動的にネットワークIPが検出されます):
+    ```bash
+    npm run dev
+    ```
+3. 他のデバイスから、ローカルIPアドレスを使ってアクセスします。例: `http://192.168.1.7:8000`
+
+> [!NOTE]
+> アプリケーションにアクセスできない場合は、ファイアウォールの設定を確認してください。
+> `firewalld` (CentOS/RHEL/Fedora) の場合:
+> ```bash
+> sudo firewall-cmd --add-port=8000/tcp --permanent
+> sudo firewall-cmd --add-port=5173/tcp --permanent
+> sudo firewall-cmd --reload
+> ```
+
