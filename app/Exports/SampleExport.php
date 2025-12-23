@@ -49,8 +49,12 @@ class SampleExport
 
         // 3. LibreOfficeを使用してPDFに変換
         // 出力ディレクトリは絶対パスである必要があります
+        // 並列実行時の競合を防ぐため、一意の設定ディレクトリを指定します
+        $userInstallDir = "file://" . $tempDir . "/libo_user_" . $timestamp . "_" . uniqid();
+
         $command = [
             'libreoffice',
+            '-env:UserInstallation=' . $userInstallDir,
             '--headless',
             '--convert-to',
             'pdf',
