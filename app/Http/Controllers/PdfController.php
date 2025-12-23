@@ -13,6 +13,14 @@ class PdfController extends Controller
     public function generate()
     {
         $jobId = (string) \Illuminate\Support\Str::uuid();
+
+        // 初期ステータス（queued）をDBに記録
+        \App\Models\JobHistory::create([
+            'job_uuid' => $jobId,
+            'status' => 'queued',
+            'job_created_at' => now()->timestamp,
+        ]);
+
         \App\Jobs\GeneratePdfJob::dispatch($jobId);
 
         return redirect()->route('pdf.status', ['id' => $jobId]);
@@ -31,13 +39,16 @@ class PdfController extends Controller
      */
     public function checkStatus($id)
     {
-        $status = \Illuminate\Support\Facades\Cache::get("pdf_status_{$id}");
+        // 最新のステータスを取得
+        $history = \App\Models\JobHistory::where('job_uuid', $id)
+            ->latest()
+            ->first();
 
-        if (!$status) {
+        if (!$history) {
             return response()->json(['status' => 'not_found'], 404);
         }
 
-        return response()->json(['status' => $status]);
+        return response()->json(['status' => $history->status]);
     }
 
     /**
@@ -45,12 +56,15 @@ class PdfController extends Controller
      */
     public function download($id)
     {
-        $path = \Illuminate\Support\Facades\Cache::get("pdf_file_{$id}");
+        // 完了ステータスのレコードを取得
+        $history = \App\Models\JobHistory::where('job_uuid', $id)
+            ->where('status', 'completed')
+            ->first();
 
-        if (!$path || !file_exists($path)) {
+        if (!$history || !$history->details || !file_exists($history->details)) {
             abort(404, 'ファイルが見つからないか、有効期限切れです。');
         }
 
-        return response()->download($path, 'generated_report.pdf');
+        return response()->download($history->details, 'generated_report.pdf');
     }
 }

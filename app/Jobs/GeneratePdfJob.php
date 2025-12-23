@@ -32,22 +32,53 @@ class GeneratePdfJob implements ShouldQueue
     {
         Log::info("PDF生成を開始します。Job ID: {$this->jobId}");
 
+        // ジョブ情報の取得
+        $jobDbId = $this->job ? $this->job->getJobId() : null;
+        $queue = $this->job ? $this->job->getQueue() : null;
+        $payload = $this->job ? $this->job->getRawBody() : null;
+        $attempts = $this->job ? $this->job->attempts() : null;
+
         try {
-            // ステータスを処理中に更新
-            Cache::put("pdf_status_{$this->jobId}", 'processing', 3600);
+            // ステータスを処理中に更新 (DB記録)
+            \App\Models\JobHistory::create([
+                'job_uuid' => $this->jobId,
+                'status' => 'processing',
+                'job_db_id' => $jobDbId,
+                'queue' => $queue,
+                'payload' => $payload,
+                'attempts' => $attempts,
+                'job_created_at' => now()->timestamp, // jobsテーブルのcreated_atは簡単には取れない場合があるため現在時刻で代用
+            ]);
 
             $export = new SampleExport();
             $pdfPath = $export->generate();
 
-            // 結果をキャッシュに保存
-            Cache::put("pdf_file_{$this->jobId}", $pdfPath, 3600);
-            Cache::put("pdf_status_{$this->jobId}", 'completed', 3600);
+            // 完了ステータスをDBに記録
+            \App\Models\JobHistory::create([
+                'job_uuid' => $this->jobId,
+                'status' => 'completed',
+                'job_db_id' => $jobDbId,
+                'queue' => $queue,
+                'payload' => $payload,
+                'attempts' => $attempts,
+                'details' => $pdfPath,
+            ]);
 
             Log::info("PDF生成が完了しました。Job ID: {$this->jobId}");
 
         } catch (\Exception $e) {
             Log::error("PDF生成に失敗しました。Job ID: {$this->jobId}. Error: " . $e->getMessage());
-            Cache::put("pdf_status_{$this->jobId}", 'failed', 3600);
+
+            // 失敗ステータスをDBに記録
+            \App\Models\JobHistory::create([
+                'job_uuid' => $this->jobId,
+                'status' => 'failed',
+                'job_db_id' => $jobDbId,
+                'queue' => $queue,
+                'payload' => $payload,
+                'attempts' => $attempts,
+                'details' => $e->getMessage(),
+            ]);
             throw $e;
         }
     }
